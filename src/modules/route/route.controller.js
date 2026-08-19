@@ -18,7 +18,7 @@ const addRoute = Err(async (req, res) => {
 
     await addingroute.save();
 
-    res.status(201).json({ message: "route added successfully" });
+    res.status(201).json({ message: "route added successfully", data: addingroute });
 
 })
 
