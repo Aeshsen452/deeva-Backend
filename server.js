@@ -1,13 +1,11 @@
 const express = require("express");
 const env = require("dotenv");
 const cors = require("cors");
-
 env.config();
 
 const DbConnection = require("./src/config/db.config.js");
 
 DbConnection();
-
 
 const app = express();
 const port = process.env.Port;
@@ -21,5 +19,3 @@ app.use("/api", endPoint);
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`)
 })
-
-

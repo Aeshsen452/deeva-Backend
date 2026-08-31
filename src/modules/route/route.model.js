@@ -1,7 +1,4 @@
-const { schema, model, Schema } = require("mongoose");
-
-
-
+const { model, Schema } = require("mongoose");
 const routeSchema = new Schema({
     route: {
         type: String,
