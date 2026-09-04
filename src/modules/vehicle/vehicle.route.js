@@ -5,7 +5,7 @@ const vehicleRouter = Router();
 
 
 vehicleRouter.post("/", addVehicle);
-vehicleRouter.post("/excelfile", upload.single("file"), importExcelFile);
+vehicleRouter.post("/bulk", upload.single("vehicleExcelFile"), importExcelFile);
 vehicleRouter.delete("/deletevehicle/:id", deleteVehicle);
 vehicleRouter.patch("/", updateVehicle);
 vehicleRouter.get("/", getVehicle)

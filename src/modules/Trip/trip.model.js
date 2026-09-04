@@ -9,6 +9,8 @@ const tripSchema = new Schema({
     },
     rps: {
         type: String,
+        unique: true,
+        trim: true,
         required: [true, "rps number is required"],
         minlength: [6, "invalid rps number"]
     },
@@ -43,6 +45,8 @@ const tripSchema = new Schema({
         type: String,
         required: [true, "given minutes is required"],
     },
+
+
     touchingPoint: {
         type: String,
     },
@@ -61,6 +65,7 @@ const tripSchema = new Schema({
     loadminute: {
         type: String,
     },
+
 
     remark: {
         type: String,
@@ -87,7 +92,6 @@ const tripSchema = new Schema({
             type: Number,
             default: 0
         },
-
 
         tripStatus: {
             type: String,

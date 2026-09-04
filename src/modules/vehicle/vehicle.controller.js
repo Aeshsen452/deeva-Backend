@@ -5,7 +5,7 @@ const path = require("path");
 
 
 const addVehicle = Err(async (req, res) => {
-
+ 
     const { vehicleNumber } = req.body;
     if (!vehicleNumber) return res.status(400).json({ message: "Vehicle Number is required" });
 
@@ -27,7 +27,6 @@ const addVehicle = Err(async (req, res) => {
 const importExcelFile = Err(async (req, res) => {
 
 
-
     const file = req?.file;
     if (!file) return res.status(400).json({ message: "please upload an excel file" });
     const fileName = file.filename;
@@ -46,17 +45,20 @@ const importExcelFile = Err(async (req, res) => {
 
     if (!(Object.keys(data[0])[0] === "vehicleNumber")) return res.status(400).json({ message: "File data missmatched please correct the heading name." });
 
-
-
-    const Bulkadd = await vehiclemodel.insertMany(data);
+    try {
+        const Bulkadd = await vehiclemodel.insertMany(data, { ordered: false });
+    } catch (error) {
+        return res.status(400).json({ message: "Some data are duplicate which are not inserted into database please refresh the page to see the result " })
+    }
 
 
     res.status(200).json({ message: "File extracted successfully data saves in database", data: Bulkadd })
-
+    fs.unlinkSync(filePath);
 
 })
 
 const deleteVehicle = Err(async (req, res) => {
+
     const { id } = req.params;
 
     if (!id) return res.status(400).json({ message: "bad request " });
@@ -69,8 +71,6 @@ const deleteVehicle = Err(async (req, res) => {
 
 
 })
-
-
 
 const updateVehicle = Err(async (req, res) => {
     const { _id, vehicleNumber } = req.body;
@@ -87,27 +87,17 @@ const updateVehicle = Err(async (req, res) => {
 
 const getVehicle = Err(async (req, res) => {
 
-    const { search, currentPage, DataPerPage } = req.query;
-
-
-
-    const skip = (Number(currentPage) - 1 || 0) * DataPerPage;
+    const { search } = req.query;
     let query = {}
-
     if (search) {
         query.vehicleNumber = {
             $regex: search,
             $options: "i",
         };
     }
-
-    const Total = await vehiclemodel.countDocuments(query);
-    const data = await vehiclemodel.find(query).limit(DataPerPage).skip(skip);
-    if (data.length === 0) return res.status(200).json({ message: "No data found", data: [], Total: 0 });
-    res.status(200).json({ data, Total })
+    const data = await vehiclemodel.find(query).sort({ _id: -1 });
+    if (data.length === 0) return res.status(200).json({ message: "No data found", data: [] });
+    res.status(200).json({ data })
 })
-
-
-
 
 module.exports = { addVehicle, importExcelFile, deleteVehicle, updateVehicle, getVehicle }
