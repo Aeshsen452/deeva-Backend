@@ -1,9 +1,50 @@
 const { Err } = require("../../utils/errorHandling");
 const routemodel = require("../route/route.model");
 const tripmodel = require("./trip.model");
+const xlsx = require("xlsx");
+const path = require("path");
 
 
 // Helper Functions 
+
+// checking that dates are correct or not 
+
+const checkingDate = (t1, t2) => {
+
+    if (!t1 || !t2) return false;
+
+    const date1 = new Date(t1);
+    const date2 = new Date(t2);
+
+    if (isNaN(date1.getTime()) || isNaN(date2.getTime())) {
+        return false;
+    }
+
+    if (date1 > date2) return false;
+
+    return true
+}
+
+
+
+
+// Step 1 
+const calculatingTimeTaken = (d1, d2) => {
+
+    if (!d1 || !d2) return null;
+    const date1 = new Date(d1);
+    const date2 = new Date(d2);
+    const difference = date2 - date1;
+    const hours = Math.floor(difference / (1000 * 60 * 60));
+    const Minutes = (difference % (60 * 60 * 1000)) / 60;
+    return {
+        hours,
+        Minutes: Minutes / 1000
+    }
+
+}
+
+// step 2
 
 const CheckStatus = (d1, d2) => {
 
@@ -31,22 +72,8 @@ const CheckStatus = (d1, d2) => {
 
 }
 
-const TimeDiffernce = (d1, d2) => {
-
-    if (!d1 || !d2) return null;
-    const date1 = new Date(d1);
-    const date2 = new Date(d2);
-    const difference = date2 - date1;
-    const hours = Math.floor(difference / (1000 * 60 * 60));
-    const Minutes = (difference % (60 * 60 * 1000)) / 60;
-    return {
-        hours,
-        Minutes: Minutes / 1000
-    }
-
-}
-
-const HoursDifference = (d1, d2, status) => {
+// step 3
+const calculatingTimeDifference = (d1, d2, status) => {
     if (!d1 || !d2) return;
     const { hours, Minutes } = d1;
     const { hours: hours2, Minutes: Minutes2 } = d2;
@@ -67,6 +94,24 @@ const HoursDifference = (d1, d2, status) => {
     }
 }
 
+// step 4  // this function will return total time taken , status , time differnce 
+
+const Timefn = (T1, T2, Hour, Minute) => {
+
+    const TimeTaken = calculatingTimeTaken(T1, T2);
+    const obj = { hours: Hour, Minutes: Minute }
+    const Status = CheckStatus(TimeTaken, obj);
+    const TimeDifference = calculatingTimeDifference(TimeTaken, obj, Status);
+
+
+    return {
+        TimeTaken, Status, TimeDifference
+    }
+
+
+}
+
+
 const Penaltly = (time, charge) => {
     const { hour, minutes } = time;
     let penalty = 0;
@@ -82,6 +127,83 @@ const Penaltly = (time, charge) => {
 
     return penalty
 }
+
+const CreatingPayload = async (route, object, refundedamount) => {
+
+    const { TimeTaken, Status, TimeDifference } = object
+
+    let penalty = 0;
+    let increment = 0;
+    let refund = Status === "Late" ? Number(refundedamount) : 0
+    const { incentive, salary, latecharge } = await routemodel.findOne({ route }, { incentive: true, salary: true, latecharge: true });
+
+    if (Status === "Early") {
+        increment = incentive
+    } else if (Status === "Late") {
+        penalty = Penaltly(TimeDifference, latecharge)
+    }
+
+    const Amount = (salary - penalty + increment + refund);
+
+    const payroll = {
+        incentive: increment,
+        penalty,
+        tripTimeDifference: `${TimeDifference.hour}h : ${TimeDifference.minutes}m`,
+        tripSalary: salary,
+        TotalSalary: Amount,
+        tripStatus: Status,
+        tripTimeTaken: `${TimeTaken.hours}h : ${TimeTaken.Minutes}m`
+
+    };
+
+    return payroll
+
+}
+
+
+const checkExcelFormate = (arr2) => {
+
+    const arr1 = ['date', 'rps', 'driverName', 'vehicleNumber', 'route', 'dispatchTime', 'inTime', 'givenHour', 'givenMinutes', 'touchingPoint', 'unloadTime', 'loadTime', 'loadhour', 'loadminute', 'remark', 'refundedamount'];
+
+    if (JSON.stringify(arr1) !== JSON.stringify(arr2)) return false;
+    return true
+}
+
+
+const CreatingImportPayload = async (route, object, refundedamount) => {
+
+    const { TimeTaken, Status, TimeDifference } = object
+
+    let penalty = 0;
+    let increment = 0;
+    let refund = Status === "Late" ? Number(refundedamount) : 0
+    const { incentive, salary, latecharge } = route;
+
+    if (Status === "Early") {
+        increment = incentive
+    } else if (Status === "Late") {
+        penalty = Penaltly(TimeDifference, latecharge)
+    }
+
+    const Amount = (salary - penalty + increment + refund);
+
+    const payroll = {
+        incentive: increment,
+        penalty,
+        tripTimeDifference: `${TimeDifference.hour}h : ${TimeDifference.minutes}m`,
+        tripSalary: salary,
+        TotalSalary: Amount,
+        tripStatus: Status,
+        tripTimeTaken: `${TimeTaken.hours}h : ${TimeTaken.Minutes}m`
+
+    };
+
+    return payroll
+
+}
+
+
+
 
 
 
@@ -109,91 +231,45 @@ const addTrip = Err(async (req, res) => {
         loadTime,
         loadhour,
         loadminute,
-        remark,
         refundedamount,
     } = req.body;
 
+
+    if (!date || !rps || !driverName || !vehicleNumber || !route || !dispatchTime || !inTime || !givenHour || !givenMinutes) return res.status(400).json({ message: "All fields are mandatory" })
+
+
+    const verifyDate = checkingDate(dispatchTime, inTime);
+
+    if (!verifyDate) return res.status(400).json({ message: "Invalid dispatchTime or inTime Date" });
+
     // calculating TimeDifference in hours and minute
 
-    const TripTimeData = TimeDiffernce(dispatchTime, inTime);
+    const BulkObj = { ...req.body }
 
-    if (!TripTimeData) return res.status(400).json({ message: "invalid date" });
-    const obj = { hours: givenHour, Minutes: givenMinutes }
-
-    const TripStatus = CheckStatus(TripTimeData, obj);
-
-    const TripHoursDifference = HoursDifference(TripTimeData, obj, TripStatus);
-
-    const { incentive, salary, latecharge } = await routemodel.findOne({ route }, { incentive: true, salary: true, latecharge: true });
-
-    let penalty = 0;
-    let increment = 0;
-
-    if (TripStatus === "Early") {
-        increment = incentive
-    } else if (TripStatus === "Late") {
-        penalty = Penaltly(TripHoursDifference, latecharge)
-    }
-
-    const Amount = (salary - penalty + increment + Number(refundedamount || 0));
-
-    const payroll = {
-        incentive: increment,
-        penalty,
-        tripTimeDifference: `${TripHoursDifference.hour}h : ${TripHoursDifference.minutes}m`,
-        tripSalary: salary,
-        TotalSalary: Amount,
-        tripStatus: TripStatus,
-        tripTimeTaken: `${TripTimeData.hours}h : ${TripTimeData.Minutes}m`
-
-    };
-
-    const BulkObj = {
-        date,
-        rps,
-        driverName,
-        vehicleNumber,
-        route,
-        dispatchTime,
-        inTime,
-        givenHour,
-        givenMinutes
-    };
-
-    if (remark) {
-        BulkObj.remark = remark
-    }
-    if (refundedamount) {
-        BulkObj.refundedamount = refundedamount
-    }
-
-    if (touchingPoint) {
-        BulkObj.touchingPoint = touchingPoint;
-        BulkObj.unloadTime = unloadTime;
-        BulkObj.loadTime = loadTime;
-
-        const loadedTimeTaken = TimeDiffernce(unloadTime, loadTime);
-        BulkObj.loadedTimeTaken = `${loadedTimeTaken.hours}h :${loadedTimeTaken.Minutes}m`;
-
-        const loadobj = { hours: loadhour, Minutes: loadminute }
-        const loadStatus = CheckStatus(loadedTimeTaken, loadobj);
-
-        BulkObj.loadhour = loadhour;
-        BulkObj.loadminute = loadminute;
-        BulkObj.loadStatus = loadStatus;
-
-        const loadedTimeDifference = HoursDifference(loadedTimeTaken, loadobj, loadStatus);
-
-        BulkObj.loadedTimeDifference = `${loadedTimeDifference.hour}h :${loadedTimeDifference.minutes}m`;
-
-    }
+    const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
+    const payroll = await CreatingPayload(route, Time_StatusData, refundedamount);
 
     BulkObj.payroll = payroll
+
+
+    if (touchingPoint) {
+
+        const verifyTouchingDates = checkingDate(unloadTime, loadTime);
+
+        if (!verifyTouchingDates) return res.status(400).json({ message: "invalid Touching points unloadTime or loadTime dates" })
+
+        const { TimeTaken: TouchingPointTimeTaken, Status: TouchingPointStatus, TimeDifference: TouchingPointTimeDifference } = Timefn(unloadTime, loadTime, loadhour, loadminute)
+
+        BulkObj.loadedTimeTaken = `${TouchingPointTimeTaken.hours}h :${TouchingPointTimeTaken.Minutes}m`;
+        BulkObj.loadStatus = TouchingPointStatus;
+        BulkObj.loadedTimeDifference = `${TouchingPointTimeDifference.hour}h :${TouchingPointTimeDifference.minutes}m`;
+
+    }
 
     const addingTrip = new tripmodel(BulkObj);
     await addingTrip.save();
 
-    res.status(200).json({ message: "Trip added successfully", data: addingTrip })
+    res.status(200).json({ message: "Trip added successfully" })
 
 })
 
@@ -234,13 +310,7 @@ const deleteTrip = Err(async (req, res) => {
 
 const updateData = Err(async (req, res) => {
 
-
-
     const {
-        date,
-        rps,
-        driverName,
-        vehicleNumber,
         route,
         dispatchTime,
         inTime,
@@ -251,17 +321,15 @@ const updateData = Err(async (req, res) => {
         loadTime,
         loadhour,
         loadminute,
-        remark,
         refundedamount,
-        _id } = req.body;
+        rps,
+        _id
+
+
+    } = req.body;
 
     if (!_id) return res.status(400).json({ message: "bad request" });
 
-    // fetching previous data to cross verify  
-
-    const fetchPreviousData = await tripmodel.findById(_id);
-
-    if (!fetchPreviousData) return res.status(400).json({ message: "bad request" })
 
     // fetching rps number id already exist then don't allow to enter 
 
@@ -270,80 +338,32 @@ const updateData = Err(async (req, res) => {
     if (fetchingExistingRps > 0) return res.status(400).json({ message: "Rps number already exist" });
 
 
-    const TripTimeData = TimeDiffernce(dispatchTime, inTime);
+    const verifyDate = checkingDate(dispatchTime, inTime);
 
-    const obj = { hours: givenHour, Minutes: givenMinutes }
-
-    const TripStatus = CheckStatus(TripTimeData, obj);
-
-    const TripHoursDifference = HoursDifference(TripTimeData, obj, TripStatus);
-
-    const { incentive, salary, latecharge } = await routemodel.findOne({ route }, { incentive: true, salary: true, latecharge: true });
+    if (!verifyDate) return res.status(400).json({ message: "Invalid dispatchTime or inTime Date" });
 
 
-    let penalty = 0;
-    let increment = 0;
+    const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
+    const payroll = await CreatingPayload(route, Time_StatusData, refundedamount);
 
-    if (TripStatus === "Early") {
-        increment = incentive
-    } else if (TripStatus === "Late") {
-        penalty = Penaltly(TripHoursDifference, latecharge)
-    }
-
-    const Amount = (salary - penalty + increment + Number(refundedamount || 0));
-
-    const payroll = {
-        incentive: increment,
-        penalty,
-        tripTimeDifference: `${TripHoursDifference.hour}h : ${TripHoursDifference.minutes}m`,
-        tripSalary: salary,
-        TotalSalary: Amount,
-        tripStatus: TripStatus,
-        tripTimeTaken: `${TripTimeData.hours}h : ${TripTimeData.Minutes}m`
-
-    };
-
-    const BulkObj = {
-        date,
-        rps,
-        driverName,
-        vehicleNumber,
-        route,
-        dispatchTime,
-        inTime,
-        givenHour,
-        givenMinutes
-    };
-
-    if (remark) {
-        BulkObj.remark = remark
-    }
-    if (refundedamount) {
-        BulkObj.refundedamount = refundedamount
-    }
-
-    if (touchingPoint) {
-        BulkObj.touchingPoint = touchingPoint;
-        BulkObj.unloadTime = unloadTime;
-        BulkObj.loadTime = loadTime;
-
-        const loadedTimeTaken = TimeDiffernce(unloadTime, loadTime);
-        BulkObj.loadedTimeTaken = `${loadedTimeTaken.hours}h :${loadedTimeTaken.Minutes}m`;
-
-        const loadobj = { hours: loadhour, Minutes: loadminute }
-        const loadStatus = CheckStatus(loadedTimeTaken, loadobj);
-
-        BulkObj.loadhour = loadhour;
-        BulkObj.loadminute = loadminute;
-        BulkObj.loadStatus = loadStatus;
-
-        const loadedTimeDifference = HoursDifference(loadedTimeTaken, loadobj, loadStatus);
-
-        BulkObj.loadedTimeDifference = `${loadedTimeDifference.hour}h :${loadedTimeDifference.minutes}m`;
-
-    }
+    const BulkObj = { ...req.body };
 
     BulkObj.payroll = payroll
+
+    if (touchingPoint) {
+        const verifyTouchingDates = checkingDate(unloadTime, loadTime);
+
+        if (!verifyTouchingDates) return res.status(400).json({ message: "invalid Touching points unloadTime or loadTime dates" })
+
+        const { TimeTaken: TouchingPointTimeTaken, Status: TouchingPointStatus, TimeDifference: TouchingPointTimeDifference } = Timefn(unloadTime, loadTime, loadhour, loadminute)
+
+        BulkObj.loadedTimeTaken = `${TouchingPointTimeTaken.hours}h :${TouchingPointTimeTaken.Minutes}m`;
+
+        BulkObj.loadStatus = TouchingPointStatus;
+
+        BulkObj.loadedTimeDifference = `${TouchingPointTimeDifference.hour}h :${TouchingPointTimeDifference.minutes}m`;
+    }
+
 
     await tripmodel.findByIdAndUpdate(_id, BulkObj, { new: true })
 
@@ -352,6 +372,105 @@ const updateData = Err(async (req, res) => {
 })
 
 
+// convert excel date to html 
+function excelDateToHTMLDate(serial) {
+    const date = new Date(Date.UTC(1899, 11, 30));
+    date.setUTCDate(date.getUTCDate() + Number(serial));
+
+    return date.toISOString().split('T')[0];
+}
+
+const checkDateTimeFormat = (date) => {
+    const regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+    return regex.test(date)
+}
 
 
-module.exports = { addTrip, getTrip, deleteTrip, updateData }
+
+const bulkTrip = Err(async (req, res) => {
+
+    const file = req.file.filename;
+    if (!file) return res.status(400).json({ message: "please upload file" });
+    const folderPath = path.join(process.cwd(), "ExcelFiles");
+
+    const filePath = path.join(folderPath, file);
+
+
+    const workbook = xlsx.readFile(filePath);
+
+    const sheetName = workbook.SheetNames;
+    if (sheetName.length > 1) return res.status(400).json({ message: "please make a single sheet and upload again" })
+
+    const worksheet = workbook.Sheets[sheetName[0]];
+    const data = xlsx.utils.sheet_to_json(worksheet);
+    console.log(data)
+
+    const headings = Object.keys(data[0]);
+
+
+    const verifyFormat = checkExcelFormate(headings);
+    if (!verifyFormat) return res.status(400).json({ message: "this format not supported" });
+
+
+    const GetAllRoutes = await routemodel.find();
+
+    const filteringData = data.filter((item) => GetAllRoutes.some((r) => r.route === item.route));
+
+    const BulkData = [];
+
+    for (let i = 0; i < filteringData; i++) {
+
+        const { date, dispatchTime, inTime, givenHour, givenMinutes, touchingPoint, unloadTime, loadTime, loadhour, loadminute, refundedamount, route } = filteringData[i];
+
+        if (!checkDateTimeFormat(dispatchTime)) continue
+        if (!checkDateTimeFormat(inTime)) continue
+
+        if (touchingPoint) {
+            if (!checkDateTimeFormat(unloadTime)) continue
+            if (!checkDateTimeFormat(loadTime)) continue
+        }
+
+        const verifyDate = checkingDate(dispatchTime, inTime);
+
+        if (!verifyDate) continue;
+
+        const BulkObj = { ...filteringData[i], date: excelDateToHTMLDate(date) }
+
+        const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
+
+        const fetchingRoutes = GetAllRoutes.filter((r) => r.route === route)
+
+        const payroll = CreatingImportPayload(fetchingRoutes, Time_StatusData, refundedamount);
+
+        BulkObj.payroll = payroll
+
+        if (touchingPoint) {
+
+            const verifyTouchingDates = checkingDate(unloadTime, loadTime);
+
+            if (!verifyTouchingDates) continue
+
+            const { TimeTaken: TouchingPointTimeTaken, Status: TouchingPointStatus, TimeDifference: TouchingPointTimeDifference } = Timefn(unloadTime, loadTime, loadhour, loadminute)
+
+            BulkObj.loadedTimeTaken = `${TouchingPointTimeTaken.hours}h :${TouchingPointTimeTaken.Minutes}m`;
+            BulkObj.loadStatus = TouchingPointStatus;
+            BulkObj.loadedTimeDifference = `${TouchingPointTimeDifference.hour}h :${TouchingPointTimeDifference.minutes}m`;
+
+        }
+
+
+        BulkData.push(BulkObj)
+
+    }
+
+    await tripmodel.insertMany(BulkData);
+
+    res.status(201).json({ message: "Data which are correct that are inserted...." })
+
+
+})
+
+
+
+
+module.exports = { addTrip, getTrip, deleteTrip, updateData, bulkTrip }

@@ -94,8 +94,7 @@ const importExcelData = Err(async (req, res) => {
 
     const worksheet = workbook.Sheets[sheetName[0]];
     const data = XLSX.utils.sheet_to_json(worksheet);
-    console.log(data);
-
+  
     const result = await drivermodel.insertMany(data, {
         ordered: false,
     });
