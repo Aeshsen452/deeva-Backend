@@ -3,6 +3,7 @@ const { Err } = require("../../utils/errorHandling")
 const path = require("path");
 const fs = require("fs");
 const XLSX = require("xlsx");
+const ExcelJS = require("exceljs");
 
 const addDriver = Err(async (req, res) => {
 
@@ -94,7 +95,7 @@ const importExcelData = Err(async (req, res) => {
 
     const worksheet = workbook.Sheets[sheetName[0]];
     const data = XLSX.utils.sheet_to_json(worksheet);
-  
+
     const result = await drivermodel.insertMany(data, {
         ordered: false,
     });
@@ -108,5 +109,36 @@ const importExcelData = Err(async (req, res) => {
 
 })
 
+const exportExcelData = Err(async (req, res) => {
 
-module.exports = { addDriver, getDrivers, deleteDriver, updateDriver, importExcelData }
+    const allDrivers = await drivermodel.find({}, { driverName: true, driverNumber: true, _id: false });
+
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Driver");
+
+        // Add columns
+        worksheet.columns = [
+            { header: "driverName", key: "driverName", width: 30 },
+            { header: "driverNumber", key: "driverNumber", width: 20 },
+
+        ];
+        // Add data
+        allDrivers.forEach((driver) => {
+            worksheet.addRow(driver);
+        });
+        // Write Excel file
+        await workbook.xlsx.writeFile("driver.xlsx");
+        res.download("driver.xlsx", "driver.xlsx");
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Failed to generate Excel file",
+        });
+    }
+
+
+})
+
+
+module.exports = { addDriver, getDrivers, deleteDriver, updateDriver, importExcelData, exportExcelData }

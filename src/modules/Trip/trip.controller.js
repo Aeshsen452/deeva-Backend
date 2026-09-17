@@ -26,8 +26,6 @@ const checkingDate = (t1, t2) => {
 }
 
 
-
-
 // Step 1 
 const calculatingTimeTaken = (d1, d2) => {
 
@@ -163,20 +161,20 @@ const CreatingPayload = async (route, object, refundedamount) => {
 
 const checkExcelFormate = (arr2) => {
 
-    const arr1 = ['date', 'rps', 'driverName', 'vehicleNumber', 'route', 'dispatchTime', 'inTime', 'givenHour', 'givenMinutes', 'touchingPoint', 'unloadTime', 'loadTime', 'loadhour', 'loadminute', 'remark', 'refundedamount'];
+    const arr1 = ['date', 'rps', 'driverName', 'vehicleNumber', 'route', 'dispatchTime', 'inTime', 'givenHour', 'givenMinutes', 'touchingPoint', 'unloadTime', 'loadTime', 'loadhour', 'loadminute', 'refundedamount'];
 
     if (JSON.stringify(arr1) !== JSON.stringify(arr2)) return false;
     return true
 }
 
 
-const CreatingImportPayload = async (route, object, refundedamount) => {
+const CreatingImportPayload = (route, object, refundedamount) => {
 
     const { TimeTaken, Status, TimeDifference } = object
 
     let penalty = 0;
     let increment = 0;
-    let refund = Status === "Late" ? Number(refundedamount) : 0
+    let refund = Status === "Late" ? Number(refundedamount) || 0 : 0
     const { incentive, salary, latecharge } = route;
 
     if (Status === "Early") {
@@ -203,6 +201,19 @@ const CreatingImportPayload = async (route, object, refundedamount) => {
 }
 
 
+// convert excel date to html 
+function excelDateToHTMLDate(serial) {
+    const date = new Date(Date.UTC(1899, 11, 30));
+    date.setUTCDate(date.getUTCDate() + Number(serial));
+
+    return date.toISOString().split('T')[0];
+}
+
+// check That time is correct or not  
+const checkDateTimeFormat = (date) => {
+    const regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+    return regex.test(date)
+}
 
 
 
@@ -372,18 +383,7 @@ const updateData = Err(async (req, res) => {
 })
 
 
-// convert excel date to html 
-function excelDateToHTMLDate(serial) {
-    const date = new Date(Date.UTC(1899, 11, 30));
-    date.setUTCDate(date.getUTCDate() + Number(serial));
 
-    return date.toISOString().split('T')[0];
-}
-
-const checkDateTimeFormat = (date) => {
-    const regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
-    return regex.test(date)
-}
 
 
 
@@ -403,24 +403,26 @@ const bulkTrip = Err(async (req, res) => {
 
     const worksheet = workbook.Sheets[sheetName[0]];
     const data = xlsx.utils.sheet_to_json(worksheet);
-    console.log(data)
-
-    const headings = Object.keys(data[0]);
 
 
-    const verifyFormat = checkExcelFormate(headings);
-    if (!verifyFormat) return res.status(400).json({ message: "this format not supported" });
+    // const headings = Object.keys(data[0]);
+    // const verifyFormat = checkExcelFormate(headings);
+    // if (!verifyFormat) return res.status(400).json({ message: "this format not supported" });
 
 
     const GetAllRoutes = await routemodel.find();
 
     const filteringData = data.filter((item) => GetAllRoutes.some((r) => r.route === item.route));
 
+
+
     const BulkData = [];
 
-    for (let i = 0; i < filteringData; i++) {
+    for (let i = 0; i < filteringData.length; i++) {
+
 
         const { date, dispatchTime, inTime, givenHour, givenMinutes, touchingPoint, unloadTime, loadTime, loadhour, loadminute, refundedamount, route } = filteringData[i];
+
 
         if (!checkDateTimeFormat(dispatchTime)) continue
         if (!checkDateTimeFormat(inTime)) continue
@@ -430,6 +432,8 @@ const bulkTrip = Err(async (req, res) => {
             if (!checkDateTimeFormat(loadTime)) continue
         }
 
+
+
         const verifyDate = checkingDate(dispatchTime, inTime);
 
         if (!verifyDate) continue;
@@ -438,7 +442,8 @@ const bulkTrip = Err(async (req, res) => {
 
         const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
 
-        const fetchingRoutes = GetAllRoutes.filter((r) => r.route === route)
+        const fetchingRoutes = GetAllRoutes.find((r) => r.route === route);
+
 
         const payroll = CreatingImportPayload(fetchingRoutes, Time_StatusData, refundedamount);
 
@@ -459,11 +464,17 @@ const bulkTrip = Err(async (req, res) => {
         }
 
 
-        BulkData.push(BulkObj)
+        BulkData.push(BulkObj);
+
 
     }
+    try {
+        await tripmodel.insertMany(BulkData, { ordered: false });
+    } catch (error) {
+        return res.status(400).json({ message: "Some duplicates rps number found  " })
+    }
 
-    await tripmodel.insertMany(BulkData);
+    fs.unlinkSync(filePath);
 
     res.status(201).json({ message: "Data which are correct that are inserted...." })
 

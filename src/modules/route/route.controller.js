@@ -2,7 +2,8 @@ const routemodel = require("./route.model.js");
 const { Err } = require("../../utils/errorHandling.js");
 const path = require("path");
 const XLSX = require("xlsx");
-const fs = require("fs")
+const fs = require("fs");
+const ExcelJS = require("exceljs");
 
 // add route 
 
@@ -87,5 +88,38 @@ const addExcel = Err(async (req, res) => {
     fs.unlinkSync(filePath);
 })
 
+const exportExcel = Err(async (req, res) => {
 
-module.exports = { addRoute, getRoute, deleteRoute, editRoute, addExcel }
+    const allRoutes = await routemodel.find({}, { _id: false, __v: false, createdAt: false, updatedAt: false });
+
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Routes");
+
+        // Add columns
+        worksheet.columns = [
+            { header: "route", key: "route", width: 30 },
+            { header: "diesel", key: "diesel", width: 20 },
+            { header: "salary", key: "salary", width: 20 },
+            { header: "incentive", key: "incentive", width: 20 },
+            { header: "latecharge", key: "latecharge", width: 20 },
+        ];
+
+        // Add data
+        allRoutes.forEach((route) => {
+            worksheet.addRow(route);
+        });
+        // Write Excel file
+        await workbook.xlsx.writeFile("routes.xlsx");
+        res.download("routes.xlsx", "routes.xlsx");
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Failed to generate Excel file",
+        });
+    }
+
+})
+
+
+module.exports = { addRoute, getRoute, deleteRoute, editRoute, addExcel, exportExcel }

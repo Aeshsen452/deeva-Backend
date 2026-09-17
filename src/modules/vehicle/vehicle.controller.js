@@ -5,7 +5,7 @@ const path = require("path");
 
 
 const addVehicle = Err(async (req, res) => {
- 
+
     const { vehicleNumber } = req.body;
     if (!vehicleNumber) return res.status(400).json({ message: "Vehicle Number is required" });
 
@@ -46,14 +46,15 @@ const importExcelFile = Err(async (req, res) => {
     if (!(Object.keys(data[0])[0] === "vehicleNumber")) return res.status(400).json({ message: "File data missmatched please correct the heading name." });
 
     try {
-        const Bulkadd = await vehiclemodel.insertMany(data, { ordered: false });
+        await vehiclemodel.insertMany(data, { ordered: false });
+        res.status(200).json({ message: "File extracted successfully data saves in database" })
+        fs.unlinkSync(filePath);
     } catch (error) {
         return res.status(400).json({ message: "Some data are duplicate which are not inserted into database please refresh the page to see the result " })
     }
 
 
-    res.status(200).json({ message: "File extracted successfully data saves in database", data: Bulkadd })
-    fs.unlinkSync(filePath);
+
 
 })
 
