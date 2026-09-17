@@ -3,6 +3,7 @@ const routemodel = require("../route/route.model");
 const tripmodel = require("./trip.model");
 const xlsx = require("xlsx");
 const path = require("path");
+const fs = require("fs")
 
 
 // Helper Functions 
@@ -205,7 +206,6 @@ const CreatingImportPayload = (route, object, refundedamount) => {
 function excelDateToHTMLDate(serial) {
     const date = new Date(Date.UTC(1899, 11, 30));
     date.setUTCDate(date.getUTCDate() + Number(serial));
-
     return date.toISOString().split('T')[0];
 }
 
@@ -214,7 +214,6 @@ const checkDateTimeFormat = (date) => {
     const regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
     return regex.test(date)
 }
-
 
 
 
@@ -438,7 +437,10 @@ const bulkTrip = Err(async (req, res) => {
 
         if (!verifyDate) continue;
 
-        const BulkObj = { ...filteringData[i], date: excelDateToHTMLDate(date) }
+        const BulkObj = {
+            ...filteringData[i],
+            date: excelDateToHTMLDate(date)
+        }
 
         const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
 
