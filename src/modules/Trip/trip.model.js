@@ -116,6 +116,14 @@ const tripSchema = new Schema({
         TotalSalary: {
             type: Number,
             required: true
+        },
+        TripLateCharge: {
+            type: Number,
+            required: true
+        },
+        TripIncentiveAmount:{
+            type: Number,
+            required: true
         }
     },
 

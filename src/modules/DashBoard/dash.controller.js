@@ -73,8 +73,24 @@ const GetDriverData = Err(async (req, res) => {
                     On_Time: 0,
                     Late: 0,
                     Early: 0,
-                    rps: 0
+                    rps: 0,
+                    TripAmount: 0,
+                    IncentiveAmount: 0,
+                    LateAmount: 0,
                 };
+            }
+
+
+            if (!acc[vehicle].data[route].TripAmount) {
+                acc[vehicle].data[route].TripAmount = current.payroll?.tripSalary || 0;
+            }
+
+            if (!acc[vehicle].data[route].IncentiveAmount) {
+                acc[vehicle].data[route].IncentiveAmount = current.payroll?.TripIncentiveAmount || 0;
+            }
+
+            if (!acc[vehicle].data[route].LateAmount) {
+                acc[vehicle].data[route].LateAmount = current.payroll?.TripLateCharge || 0;
             }
 
             const routeData = acc[vehicle].data[route];
@@ -88,6 +104,9 @@ const GetDriverData = Err(async (req, res) => {
             routeData.Salary_Deducted += Number(
                 current.payroll?.penalty || 0
             );
+
+
+
 
             // Status
             const status = current.payroll?.tripStatus;
@@ -115,11 +134,6 @@ const GetDriverData = Err(async (req, res) => {
             key,
             ...value
         }));
-
-
-
-
-
 
     } else {
         const newData = tripData.reduce((acc, current) => {

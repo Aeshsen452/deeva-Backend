@@ -151,7 +151,9 @@ const CreatingPayload = async (route, object, refundedamount) => {
         tripSalary: salary,
         TotalSalary: Amount,
         tripStatus: Status,
-        tripTimeTaken: `${TimeTaken.hours}h : ${TimeTaken.Minutes}m`
+        tripTimeTaken: `${TimeTaken.hours}h : ${TimeTaken.Minutes}m`,
+        TripLateCharge: latecharge,
+        TripIncentiveAmount: incentive
 
     };
 
@@ -193,8 +195,9 @@ const CreatingImportPayload = (route, object, refundedamount) => {
         tripSalary: salary,
         TotalSalary: Amount,
         tripStatus: Status,
-        tripTimeTaken: `${TimeTaken.hours}h : ${TimeTaken.Minutes}m`
-
+        tripTimeTaken: `${TimeTaken.hours}h : ${TimeTaken.Minutes}m`,
+        TripLateCharge: latecharge,
+        TripIncentiveAmount: incentive
     };
 
     return payroll
