@@ -7,28 +7,28 @@ const GetDriverData = Err(async (req, res) => {
 
     const query = {}
 
-    // if (calender) {
+    if (calender) {
 
-    //     const [year, monthNumber] = calender.split("-");
+        const [year, monthNumber] = calender.split("-");
 
-    //     const startDate = `${year}-${monthNumber}-01`;
+        const startDate = `${year}-${monthNumber}-01`;
 
-    //     // Next month
-    //     const nextMonth = new Date(
-    //         Number(year),
-    //         Number(monthNumber),
-    //         1
-    //     );
-    //     const endDate =
-    //         `${nextMonth.getFullYear()}-${String(
-    //             nextMonth.getMonth() + 1
-    //         ).padStart(2, "0")}-01`;
+        // Next month
+        const nextMonth = new Date(
+            Number(year),
+            Number(monthNumber),
+            1
+        );
+        const endDate =
+            `${nextMonth.getFullYear()}-${String(
+                nextMonth.getMonth() + 1
+            ).padStart(2, "0")}-01`;
 
-    //     query.date = {
-    //         $gte: startDate,
-    //         $lt: endDate
-    //     }
-    // }
+        query.date = {
+            $gte: startDate,
+            $lt: endDate
+        }
+    }
 
     if (driver) {
         query.driverName = {
@@ -37,49 +37,142 @@ const GetDriverData = Err(async (req, res) => {
         }
     }
 
-    console.log(query)
 
     const tripData = await tripmodel.find(query);
 
 
 
+    if (tripData.length == 0) return res.status(200).json({ message: "fetched", data: tripData })
+
+
+    let Driverdata = tripData
+
     if (driver) {
-        const Driverdata = tripData.reduce((acc, current) => {
+        const filteringData = tripData.reduce((acc, current) => {
 
             const route = current.route;
-            const vehicles = current.vehicleNumber;
+            const vehicle = current.vehicleNumber;
 
-            if (!acc[vehicles]) {
-                acc[vehicles] = {
+            // Invalid data skip
+            if (!route || !vehicle) {
+                return acc;
+            }
+
+            // Vehicle initialize
+            if (!acc[vehicle]) {
+                acc[vehicle] = {
                     data: {}
                 };
             }
 
-            if (!acc[vehicles].data[route]) {
-                acc[vehicles].data[route] = {
+            // Route initialize
+            if (!acc[vehicle].data[route]) {
+                acc[vehicle].data[route] = {
                     Salary: 0,
                     Salary_Deducted: 0,
                     On_Time: 0,
                     Late: 0,
+                    Early: 0,
+                    rps: 0
+                };
+            }
 
+            const routeData = acc[vehicle].data[route];
+
+            // Salary
+            routeData.Salary += Number(
+                current.payroll?.TotalSalary || 0
+            );
+
+            // Penalty
+            routeData.Salary_Deducted += Number(
+                current.payroll?.penalty || 0
+            );
+
+            // Status
+            const status = current.payroll?.tripStatus;
+
+            if (status === "Late") {
+                routeData.Late++;
+            }
+            else if (status === "Early") {
+                routeData.Early++;
+            }
+            else {
+                routeData.On_Time++;
+            }
+
+            // RPS
+            routeData.rps++;
+
+            return acc;
+
+        }, {});
+
+        // Driverdata = Object.values(filteringData)
+
+        Driverdata = Object.entries(filteringData).map(([key, value]) => ({
+            key,
+            ...value
+        }));
+
+
+
+
+
+
+    } else {
+        const newData = tripData.reduce((acc, current) => {
+            const { driverName, vehicleNumber, route } = current;
+
+            if (!acc[driverName]) {
+                acc[driverName] = {
+                    TotalRps: 0,
+                    TotalSalary: 0,
+                    OnTime: 0,
+                    Late: 0,
+                    Early: 0,
+                    Route: [],
+                    Vehicles: [],
+                    driverName: ""
                 }
             }
 
-            
+            if (!acc[driverName][driverName]) {
+                acc[driverName].driverName = driverName;
+            }
 
-            acc[vehicles].data.push(current);
+            acc[driverName].TotalSalary += Number(
+                current.payroll?.TotalSalary || 0
+            );
+
+            acc[driverName].TotalRps++;
+
+            const status = current.payroll?.tripStatus;
+
+            if (status === "Late") {
+                acc[driverName].Late++;
+            } else if (status === "Early") {
+                acc[driverName].Early++;
+            } else {
+                acc[driverName].OnTime++;
+            }
+
+            if (route && !acc[driverName].Route.includes(route)) {
+                acc[driverName].Route.push(route);
+            }
+
+            if (vehicleNumber && !acc[driverName].Vehicles.includes(vehicleNumber)) {
+                acc[driverName].Vehicles.push(vehicleNumber);
+            }
 
             return acc;
 
         }, {})
-
-        console.log(Driverdata)
-
+        Driverdata = Object.values(newData);
     }
 
-    // console.log(tripData)
-
-    res.status(200).json({ message: "ok", data: tripData })
+    res.status(200).json({ message: "ok", data: Driverdata })
 })
 
 
