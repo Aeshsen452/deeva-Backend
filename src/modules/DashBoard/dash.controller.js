@@ -3,9 +3,15 @@ const tripmodel = require("../Trip/trip.model")
 
 
 const GetDriverData = Err(async (req, res) => {
-    const { driver, calender } = req.query;
+    const { driver, calender, search } = req.query;
 
     const query = {}
+
+    if (search) {
+        query.$or = [
+            { driverName: { $regex: search, $options: "i" } },
+        ]
+    }
 
     if (calender) {
 

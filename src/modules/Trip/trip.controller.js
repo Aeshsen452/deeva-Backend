@@ -293,11 +293,24 @@ const getTrip = Err(async (req, res) => {
     const query = {};
 
     if (search) {
-        query.rps = {
-            $regex: search,
-            $options: "i"
-        }
+        query.$or = [
+            {
+                rps: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+            {
+                driverName: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+
+
+        ]
     }
+
 
     const gettingAllTrips = await tripmodel.find(query).sort({ _id: -1 });
 
