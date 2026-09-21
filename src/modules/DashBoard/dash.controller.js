@@ -83,6 +83,7 @@ const GetDriverData = Err(async (req, res) => {
                     TripAmount: 0,
                     IncentiveAmount: 0,
                     LateAmount: 0,
+                    refund: 0
                 };
             }
 
@@ -99,12 +100,20 @@ const GetDriverData = Err(async (req, res) => {
                 acc[vehicle].data[route].LateAmount = current.payroll?.TripLateCharge || 0;
             }
 
+
+
             const routeData = acc[vehicle].data[route];
 
             // Salary
             routeData.Salary += Number(
                 current.payroll?.TotalSalary || 0
             );
+
+            routeData.refund += Number(
+                current.refundedamount || 0
+            );
+
+
 
             // Penalty
             routeData.Salary_Deducted += Number(

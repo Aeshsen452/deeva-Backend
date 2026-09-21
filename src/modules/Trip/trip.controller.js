@@ -430,7 +430,6 @@ const bulkTrip = Err(async (req, res) => {
     const filteringData = data.filter((item) => GetAllRoutes.some((r) => r.route === item.route));
 
 
-
     const BulkData = [];
 
     for (let i = 0; i < filteringData.length; i++) {
@@ -483,6 +482,11 @@ const bulkTrip = Err(async (req, res) => {
 
 
         BulkData.push(BulkObj);
+
+
+        const fullPath = path.join(process.cwd(), "Testing", "check.json");
+
+        fs.writeFileSync(fullPath, JSON.stringify(BulkData, null, 2), "utf-8");
 
 
     }
