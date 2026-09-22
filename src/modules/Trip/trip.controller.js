@@ -205,12 +205,33 @@ const CreatingImportPayload = (route, object, refundedamount) => {
 }
 
 
-// convert excel date to html 
-function excelDateToHTMLDate(serial) {
-    const date = new Date(Date.UTC(1899, 11, 30));
-    date.setUTCDate(date.getUTCDate() + Number(serial));
-    return date.toISOString().split('T')[0];
+// convert excel date to html
+
+function excelDateToHTMLDate(excelTimestamp) {
+    // 1. Guard against null, undefined, empty strings, or non-numeric inputs
+    if (excelTimestamp === null || excelTimestamp === undefined || excelTimestamp === '') {
+        return ''; // Return an empty string or null depending on your database schema
+    }
+
+    // 2. Cast input to a number
+    const serial = Number(excelTimestamp);
+
+    // 3. Ensure it's a valid number
+    if (isNaN(serial)) {
+        return '';
+    }
+
+    // 4. Perform Excel to Unix conversion
+    const dateObj = new Date((serial - 25569) * 86400 * 1000);
+
+    // 5. Check if the generated Date object is valid before calling .toISOString()
+    if (isNaN(dateObj.getTime())) {
+        return '';
+    }
+
+    return dateObj.toISOString().split('T')[0];
 }
+
 
 // check That time is correct or not  
 const checkDateTimeFormat = (date) => {
@@ -355,21 +376,16 @@ const updateData = Err(async (req, res) => {
 
     if (!_id) return res.status(400).json({ message: "bad request" });
 
-
-    // fetching rps number id already exist then don't allow to enter 
-
-    const fetchingExistingRps = await tripmodel.countDocuments({ rps, _id: { $ne: _id } });
-
-    if (fetchingExistingRps > 0) return res.status(400).json({ message: "Rps number already exist" });
-
-
     const verifyDate = checkingDate(dispatchTime, inTime);
 
     if (!verifyDate) return res.status(400).json({ message: "Invalid dispatchTime or inTime Date" });
 
 
     const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
-    const payroll = await CreatingPayload(route, Time_StatusData, refundedamount);
+
+    const RouteData = await routemodel.findOne({ route }, { incentive: true, salary: true, latecharge: true, diesel: true })
+
+    const payroll = CreatingPayload(RouteData, Time_StatusData, refundedamount);
 
     const BulkObj = { ...req.body };
 
@@ -414,6 +430,7 @@ const bulkTrip = Err(async (req, res) => {
     const worksheet = workbook.Sheets[sheetName[0]];
     const data = xlsx.utils.sheet_to_json(worksheet);
 
+
     // const headings = Object.keys(data[0]);
     // const verifyFormat = checkExcelFormate(headings);
     // if (!verifyFormat) return res.status(400).json({ message: "this format not supported" });
@@ -448,7 +465,7 @@ const bulkTrip = Err(async (req, res) => {
 
         const BulkObj = {
             ...filteringData[i],
-            // date: excelDateToHTMLDate(date)
+            date: excelDateToHTMLDate(date)
         }
 
         const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
