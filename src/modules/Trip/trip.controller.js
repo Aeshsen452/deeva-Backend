@@ -232,6 +232,11 @@ function excelDateToHTMLDate(excelTimestamp) {
     return dateObj.toISOString().split('T')[0];
 }
 
+const convertHtmlDate = (date) => {
+    const [day, month, year] = date.split('-');
+    return `${year}-${month}-${day}`;
+}
+
 
 // check That time is correct or not  
 const checkDateTimeFormat = (date) => {
@@ -430,6 +435,29 @@ const bulkTrip = Err(async (req, res) => {
     const worksheet = workbook.Sheets[sheetName[0]];
     const data = xlsx.utils.sheet_to_json(worksheet);
 
+    // const AllDate = data.filter((d) => !excelDateToHTMLDate(d.date));
+    // const AllCorrectData = data.filter((d) => excelDateToHTMLDate(d.date));
+
+    // const errorData = AllDate.map((d) => {
+    //     return {
+    //         rps: d.rps,
+    //         date: d.date
+    //     }
+    // })
+
+    // const correctData = AllCorrectData.map((d) => {
+    //     return {
+    //         rps: d.rps,
+    //         date: d.date
+    //     }
+    // })
+
+
+    // const fileName = path.join(folderPath, "Error.json");
+    // const correctfileName = path.join(folderPath, "Correct.json");
+
+    // fs.writeFileSync(fileName, JSON.stringify(errorData, null, 2));
+    // fs.writeFileSync(correctfileName, JSON.stringify(correctData, null, 2));
 
     // const headings = Object.keys(data[0]);
     // const verifyFormat = checkExcelFormate(headings);
@@ -465,7 +493,7 @@ const bulkTrip = Err(async (req, res) => {
 
         const BulkObj = {
             ...filteringData[i],
-            date: excelDateToHTMLDate(date)
+            date: excelDateToHTMLDate(date) ? excelDateToHTMLDate(date) : convertHtmlDate(date)
         }
 
         const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
@@ -498,6 +526,7 @@ const bulkTrip = Err(async (req, res) => {
     try {
         await tripmodel.insertMany(BulkData, { ordered: false });
     } catch (error) {
+        
         return res.status(400).json({ message: "Some duplicates rps number found  " })
     }
 
