@@ -414,16 +414,15 @@ const bulkTrip = Err(async (req, res) => {
     const worksheet = workbook.Sheets[sheetName[0]];
     const data = xlsx.utils.sheet_to_json(worksheet);
 
-
     // const headings = Object.keys(data[0]);
     // const verifyFormat = checkExcelFormate(headings);
     // if (!verifyFormat) return res.status(400).json({ message: "this format not supported" });
 
 
-    const GetAllRoutes = await routemodel.find({}, { incentive: true, salary: true, latecharge: true, diesel: true });
+    const GetAllRoutes = await routemodel.find({}, { incentive: true, salary: true, latecharge: true, diesel: true, route: true });
+
 
     const filteringData = data.filter((item) => GetAllRoutes.some((r) => r.route === item.route));
-
 
     const BulkData = [];
 
@@ -449,7 +448,7 @@ const bulkTrip = Err(async (req, res) => {
 
         const BulkObj = {
             ...filteringData[i],
-            date: excelDateToHTMLDate(date)
+            // date: excelDateToHTMLDate(date)
         }
 
         const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
