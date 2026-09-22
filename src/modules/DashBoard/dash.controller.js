@@ -46,8 +46,6 @@ const GetDriverData = Err(async (req, res) => {
 
     const tripData = await tripmodel.find(query);
 
-
-
     if (tripData.length == 0) return res.status(200).json({ message: "fetched", data: tripData })
 
 
@@ -83,7 +81,9 @@ const GetDriverData = Err(async (req, res) => {
                     TripAmount: 0,
                     IncentiveAmount: 0,
                     LateAmount: 0,
-                    refund: 0
+                    refund: 0,
+                    Diesel : 0,
+                    
                 };
             }
 
@@ -111,6 +111,10 @@ const GetDriverData = Err(async (req, res) => {
 
             routeData.refund += Number(
                 current.refundedamount || 0
+            );
+
+             routeData.Diesel += Number(
+                current.DieselUsed || 0
             );
 
 

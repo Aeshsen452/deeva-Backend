@@ -127,14 +127,14 @@ const Penaltly = (time, charge) => {
     return penalty
 }
 
-const CreatingPayload = async (route, object, refundedamount) => {
+const CreatingPayload = (route, object, refundedamount) => {
 
     const { TimeTaken, Status, TimeDifference } = object
 
     let penalty = 0;
     let increment = 0;
     let refund = Status === "Late" ? Number(refundedamount) : 0
-    const { incentive, salary, latecharge } = await routemodel.findOne({ route }, { incentive: true, salary: true, latecharge: true });
+    const { incentive, salary, latecharge } = route;
 
     if (Status === "Early") {
         increment = incentive
@@ -219,9 +219,6 @@ const checkDateTimeFormat = (date) => {
 }
 
 
-
-
-
 // rest apis 
 
 // -------------------------------------------------------------
@@ -260,8 +257,10 @@ const addTrip = Err(async (req, res) => {
     const BulkObj = { ...req.body }
 
     const Time_StatusData = Timefn(dispatchTime, inTime, givenHour, givenMinutes);
-    const payroll = await CreatingPayload(route, Time_StatusData, refundedamount);
+    const RouteData = await routemodel.findOne({ route }, { incentive: true, salary: true, latecharge: true, diesel: true })
+    const payroll = CreatingPayload(RouteData, Time_StatusData, refundedamount);
 
+    BulkObj.DieselUsed = RouteData.diesel
     BulkObj.payroll = payroll
 
 
@@ -398,10 +397,6 @@ const updateData = Err(async (req, res) => {
 })
 
 
-
-
-
-
 const bulkTrip = Err(async (req, res) => {
 
     const file = req.file.filename;
@@ -425,7 +420,7 @@ const bulkTrip = Err(async (req, res) => {
     // if (!verifyFormat) return res.status(400).json({ message: "this format not supported" });
 
 
-    const GetAllRoutes = await routemodel.find();
+    const GetAllRoutes = await routemodel.find({}, { incentive: true, salary: true, latecharge: true, diesel: true });
 
     const filteringData = data.filter((item) => GetAllRoutes.some((r) => r.route === item.route));
 
@@ -465,6 +460,7 @@ const bulkTrip = Err(async (req, res) => {
         const payroll = CreatingImportPayload(fetchingRoutes, Time_StatusData, refundedamount);
 
         BulkObj.payroll = payroll
+        BulkObj.DieselUsed = fetchingRoutes.diesel
 
         if (touchingPoint) {
 
@@ -482,13 +478,6 @@ const bulkTrip = Err(async (req, res) => {
 
 
         BulkData.push(BulkObj);
-
-
-        const fullPath = path.join(process.cwd(), "Testing", "check.json");
-
-        fs.writeFileSync(fullPath, JSON.stringify(BulkData, null, 2), "utf-8");
-
-
     }
     try {
         await tripmodel.insertMany(BulkData, { ordered: false });

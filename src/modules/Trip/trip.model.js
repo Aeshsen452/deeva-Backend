@@ -121,11 +121,16 @@ const tripSchema = new Schema({
             type: Number,
             required: true
         },
-        TripIncentiveAmount:{
+        TripIncentiveAmount: {
             type: Number,
             required: true
         }
     },
+    DieselUsed: {
+        type: String,
+        required: true,
+        default: "0"
+    }
 
 })
 
