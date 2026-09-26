@@ -313,7 +313,7 @@ const addTrip = Err(async (req, res) => {
 
 
 const getTrip = Err(async (req, res) => {
-    const { search } = req.query;
+    const { search, skip, limit } = req.query;
 
     const query = {};
 
@@ -336,12 +336,12 @@ const getTrip = Err(async (req, res) => {
         ]
     }
 
-
-    const gettingAllTrips = await tripmodel.find(query).sort({ _id: -1 });
+    const total = await tripmodel.countDocuments(query)
+    const gettingAllTrips = await tripmodel.find(query).sort({ _id: -1 }).skip(skip).limit(limit);
 
     if (gettingAllTrips.length === 0) return res.status(200).json({ message: "Fetched successfully", data: [] })
 
-    res.status(200).json({ message: "Fetched successfully", data: gettingAllTrips })
+    res.status(200).json({ message: "Fetched successfully", data: gettingAllTrips, total })
 
 })
 
@@ -526,7 +526,7 @@ const bulkTrip = Err(async (req, res) => {
     try {
         await tripmodel.insertMany(BulkData, { ordered: false });
     } catch (error) {
-        
+
         return res.status(400).json({ message: "Some duplicates rps number found  " })
     }
 

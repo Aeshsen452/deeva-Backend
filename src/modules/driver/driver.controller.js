@@ -68,7 +68,8 @@ const updateDriver = Err(async (req, res) => {
 
 const getDrivers = Err(async (req, res) => {
 
-    const { search } = req.query;
+    const { search, limit, skip } = req.query;
+
     let query = {}
 
     if (search) {
@@ -77,10 +78,10 @@ const getDrivers = Err(async (req, res) => {
             $options: "i",
         };
     }
-
-    const data = await drivermodel.find(query).sort({ _id: -1 });
+    const total = await drivermodel.countDocuments(query);
+    const data = await drivermodel.find(query).sort({ _id: -1 }).skip(skip).limit(limit);
     if (data.length === 0) return res.status(200).json({ message: "No data found", data: [] });
-    res.status(200).json({ data })
+    res.status(200).json({ data, total })
 })
 
 const importExcelData = Err(async (req, res) => {
@@ -139,6 +140,8 @@ const exportExcelData = Err(async (req, res) => {
 
 
 })
+
+
 
 
 module.exports = { addDriver, getDrivers, deleteDriver, updateDriver, importExcelData, exportExcelData }

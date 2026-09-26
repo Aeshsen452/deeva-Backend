@@ -2,6 +2,7 @@ const vehiclemodel = require("./vehicle.model");
 const XLSX = require("xlsx");
 const { Err } = require("../../utils/errorHandling");
 const path = require("path");
+const ExcelJS = require("exceljs")
 
 
 const addVehicle = Err(async (req, res) => {
@@ -88,7 +89,8 @@ const updateVehicle = Err(async (req, res) => {
 
 const getVehicle = Err(async (req, res) => {
 
-    const { search } = req.query;
+    const { search, skip, limit } = req.query;
+
     let query = {}
     if (search) {
         query.vehicleNumber = {
@@ -96,9 +98,42 @@ const getVehicle = Err(async (req, res) => {
             $options: "i",
         };
     }
-    const data = await vehiclemodel.find(query).sort({ _id: -1 });
+    const total = await vehiclemodel.countDocuments(query);
+    const data = await vehiclemodel.find(query).sort({ _id: -1 }).skip(skip).limit(limit);
     if (data.length === 0) return res.status(200).json({ message: "No data found", data: [] });
-    res.status(200).json({ data })
+    res.status(200).json({ data, total })
 })
 
-module.exports = { addVehicle, importExcelFile, deleteVehicle, updateVehicle, getVehicle }
+const exportExcel = Err(async (req, res) => {
+
+    const allVehicles = await vehiclemodel.find({}, { _id: false, __v: false, createdAt: false, updatedAt: false });
+
+    if (allVehicles.length == 0) return res.status(404).json({ message: "There is no data to export " })
+
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Vehicles");
+
+        // Add columns
+        worksheet.columns = [
+            { header: "vehicleNumber", key: "vehicleNumber", width: 30 },
+
+        ];
+
+        // Add data
+        allVehicles.forEach((vehicle) => {
+            worksheet.addRow(vehicle);
+        });
+        // Write Excel file
+        await workbook.xlsx.writeFile("vehicle.xlsx");
+        res.download("vehicle.xlsx", "vehicle.xlsx");
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Failed to generate Excel file",
+        });
+    }
+
+})
+
+module.exports = { addVehicle, importExcelFile, deleteVehicle, updateVehicle, getVehicle, exportExcel }

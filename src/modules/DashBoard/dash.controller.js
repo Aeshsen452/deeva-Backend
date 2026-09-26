@@ -3,7 +3,7 @@ const tripmodel = require("../Trip/trip.model")
 
 
 const GetDriverData = Err(async (req, res) => {
-    const { driver, calender, search } = req.query;
+    const { driver, calender, search, skip, limit } = req.query;
 
     const query = {}
 
@@ -14,7 +14,6 @@ const GetDriverData = Err(async (req, res) => {
     }
 
     if (calender) {
-
         const [year, monthNumber] = calender.split("-");
 
         const startDate = `${year}-${monthNumber}-01`;
@@ -44,7 +43,8 @@ const GetDriverData = Err(async (req, res) => {
     }
 
 
-    const tripData = await tripmodel.find(query);
+    const total = await tripmodel.countDocuments(query)
+    const tripData = await tripmodel.find(query).skip(skip).limit(limit);
 
     if (tripData.length == 0) return res.status(200).json({ message: "fetched", data: tripData })
 
@@ -82,8 +82,8 @@ const GetDriverData = Err(async (req, res) => {
                     IncentiveAmount: 0,
                     LateAmount: 0,
                     refund: 0,
-                    Diesel : 0,
-                    
+                    Diesel: 0,
+
                 };
             }
 
@@ -113,7 +113,7 @@ const GetDriverData = Err(async (req, res) => {
                 current.refundedamount || 0
             );
 
-             routeData.Diesel += Number(
+            routeData.Diesel += Number(
                 current.DieselUsed || 0
             );
 
@@ -205,7 +205,7 @@ const GetDriverData = Err(async (req, res) => {
         Driverdata = Object.values(newData);
     }
 
-    res.status(200).json({ message: "ok", data: Driverdata })
+    res.status(200).json({ message: "ok", data: Driverdata, total })
 })
 
 

@@ -26,7 +26,7 @@ const addRoute = Err(async (req, res) => {
 // get 
 
 const getRoute = Err(async (req, res) => {
-    const { search } = req.query;
+    const { search, skip, limit } = req.query;
     const query = {};
 
     if (search) {
@@ -36,10 +36,10 @@ const getRoute = Err(async (req, res) => {
         };
     }
 
-
-    const routes = await routemodel.find(query).sort({ _id: -1 });
+    const total = await routemodel.countDocuments(query)
+    const routes = await routemodel.find(query).sort({ _id: -1 }).skip(skip).limit(limit);
     if (routes.length === 0) return res.status(204).json({ message: "no data found", data: [] });
-    res.status(200).json({ message: "fetch successfully", data: routes })
+    res.status(200).json({ message: "fetch successfully", data: routes, total })
 })
 
 // delete
