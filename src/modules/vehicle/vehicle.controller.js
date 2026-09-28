@@ -49,13 +49,10 @@ const importExcelFile = Err(async (req, res) => {
     try {
         await vehiclemodel.insertMany(data, { ordered: false });
         res.status(200).json({ message: "File extracted successfully data saves in database" })
-        fs.unlinkSync(filePath);
+        // fs.unlinkSync(filePath);
     } catch (error) {
         return res.status(400).json({ message: "Some data are duplicate which are not inserted into database please refresh the page to see the result " })
     }
-
-
-
 
 })
 
@@ -108,7 +105,6 @@ const exportExcel = Err(async (req, res) => {
 
     const allVehicles = await vehiclemodel.find({}, { _id: false, __v: false, createdAt: false, updatedAt: false });
 
-    if (allVehicles.length == 0) return res.status(404).json({ message: "There is no data to export " })
 
     try {
         const workbook = new ExcelJS.Workbook();
