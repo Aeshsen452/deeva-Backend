@@ -1,10 +1,13 @@
 const { Err } = require("../../utils/errorHandling")
-const tripmodel = require("../Trip/trip.model")
+const tripmodel = require("../Trip/trip.model");
+const fs = require("fs");
+const path = require("path");
+
 
 
 const GetDriverData = Err(async (req, res) => {
     const { driver, calender, search, skip, limit } = req.query;
-   
+
     const query = {}
 
     if (search) {
@@ -42,8 +45,6 @@ const GetDriverData = Err(async (req, res) => {
         }
     }
 
-
-    const total = await tripmodel.countDocuments(query)
     const tripData = await tripmodel.find(query);
 
     if (tripData.length == 0) return res.status(200).json({ message: "fetched", data: tripData })
@@ -205,7 +206,7 @@ const GetDriverData = Err(async (req, res) => {
         Driverdata = Object.values(newData);
     }
 
-    res.status(200).json({ message: "ok", data: Driverdata, total })
+    res.status(200).json({ message: "ok", data: Driverdata })
 })
 
 

@@ -227,10 +227,12 @@ function excelDateToHTMLDate(excelTimestamp) {
 
     // 5. Check if the generated Date object is valid before calling .toISOString()
     if (isNaN(dateObj.getTime())) {
-        return '';
+        return ''; 
     }
 
-    return dateObj.toISOString().split('T')[0];
+    const ForamtedDate = dateObj.toISOString().split('T')[0];
+    const [year, day, month] = ForamtedDate.split('-');
+    return `${year}-${month}-${day}`;
 }
 
 const convertHtmlDate = (date) => {
@@ -436,29 +438,29 @@ const bulkTrip = Err(async (req, res) => {
     const worksheet = workbook.Sheets[sheetName[0]];
     const data = xlsx.utils.sheet_to_json(worksheet);
 
-    // const AllDate = data.filter((d) => !excelDateToHTMLDate(d.date));
-    // const AllCorrectData = data.filter((d) => excelDateToHTMLDate(d.date));
+    const AllDate = data.filter((d) => !excelDateToHTMLDate(d.date));
+    const AllCorrectData = data.filter((d) => excelDateToHTMLDate(d.date));
 
-    // const errorData = AllDate.map((d) => {
-    //     return {
-    //         rps: d.rps,
-    //         date: d.date
-    //     }
-    // })
+    const errorData = AllDate.map((d) => {
+        return {
+            rps: d.rps,
+            date: d.date
+        }
+    })
 
-    // const correctData = AllCorrectData.map((d) => {
-    //     return {
-    //         rps: d.rps,
-    //         date: d.date
-    //     }
-    // })
+    const correctData = AllCorrectData.map((d) => {
+        return {
+            rps: d.rps,
+            date: d.date
+        }
+    })
 
 
-    // const fileName = path.join(folderPath, "Error.json");
-    // const correctfileName = path.join(folderPath, "Correct.json");
+    const fileName = path.join(folderPath, "Error.json");
+    const correctfileName = path.join(folderPath, "Correct.json");
 
-    // fs.writeFileSync(fileName, JSON.stringify(errorData, null, 2));
-    // fs.writeFileSync(correctfileName, JSON.stringify(correctData, null, 2));
+    fs.writeFileSync(fileName, JSON.stringify(errorData, null, 2));
+    fs.writeFileSync(correctfileName, JSON.stringify(correctData, null, 2));
 
     // const headings = Object.keys(data[0]);
     // const verifyFormat = checkExcelFormate(headings);
