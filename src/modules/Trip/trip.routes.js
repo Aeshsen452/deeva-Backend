@@ -1,4 +1,4 @@
-const { addTrip, getTrip, deleteTrip, updateData, bulkTrip } = require("./trip.controller");
+const { addTrip, getTrip, deleteTrip, updateData, bulkTrip, exportExcel } = require("./trip.controller");
 const { Router } = require("express");
 const upload = require("../../middlewares/multer");
 
@@ -9,5 +9,6 @@ tripRouter.get("/", getTrip);
 tripRouter.delete("/:deleteId", deleteTrip);
 tripRouter.patch("/", updateData);
 tripRouter.post("/bulk", upload.single("ExcelFile"), bulkTrip);
+tripRouter.get("/bulk", exportExcel);
 
 module.exports = tripRouter;

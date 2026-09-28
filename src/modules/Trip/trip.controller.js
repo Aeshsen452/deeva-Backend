@@ -3,7 +3,8 @@ const routemodel = require("../route/route.model");
 const tripmodel = require("./trip.model");
 const xlsx = require("xlsx");
 const path = require("path");
-const fs = require("fs")
+const fs = require("fs");
+const ExcelJS = require("exceljs")
 
 
 // Helper Functions 
@@ -537,7 +538,96 @@ const bulkTrip = Err(async (req, res) => {
 
 })
 
+const exportExcel = Err(async (req, res) => {
+
+    const allTrip = await tripmodel.find({}, { _id: false, __v: false, createdAt: false, updatedAt: false });
+
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Routes");
+        worksheet.columns = [
+            { header: "date", key: "date" },
+            { header: "rps", key: "rps" },
+            { header: "driverName", key: "driverName" },
+            { header: "vehicleNumber", key: "vehicleNumber" },
+            { header: "route", key: "route" },
+            { header: "dispatchTime", key: "dispatchTime" },
+            { header: "inTime", key: "inTime" },
+            { header: "givenHour", key: "givenHour" },
+            { header: "givenMinutes", key: "givenMinutes" },
+            { header: "touchingPoint", key: "touchingPoint" },
+            { header: "unloadTime", key: "unloadTime" },
+            { header: "loadTime", key: "loadTime" },
+            { header: "loadhour", key: "loadhour" },
+            { header: "loadminute", key: "loadminute" },
+            { header: "remark", key: "remark" },
+            { header: "loadStatus", key: "loadStatus" },
+            { header: "loadedTimeTaken", key: "loadedTimeTaken" },
+            { header: "loadedTimeDifference", key: "loadedTimeDifference" },
+            { header: "DieselUsed", key: "DieselUsed" },
+            { header: "incentive", key: "incentive" },
+            { header: "penalty", key: "penalty" },
+            { header: "tripStatus", key: "tripStatus" },
+            { header: "tripTimeTaken", key: "tripTimeTaken" },
+            { header: "tripTimeDifference", key: "tripTimeDifference" },
+            { header: "tripSalary", key: "tripSalary" },
+            { header: "TotalSalary", key: "TotalSalary" },
+            { header: "TripLateCharge", key: "TripLateCharge" },
+            { header: "TripIncentiveAmount", key: "TripIncentiveAmount" }
+        ];
+
+
+        const TripFormatData = allTrip.map((route) => {
+            const payroll = route.payroll || {};
+
+            return {
+                date: route.date || "",
+                rps: route.rps || "",
+                driverName: route.driverName || "",
+                vehicleNumber: route.vehicleNumber || "",
+                route: route.route || "",
+                dispatchTime: route.dispatchTime || "",
+                inTime: route.inTime || "",
+                givenHour: route.givenHour || "",
+                givenMinutes: route.givenMinutes || "",
+                touchingPoint: route.touchingPoint || "",
+                unloadTime: route.unloadTime || "",
+                loadTime: route.loadTime || "",
+                loadhour: route.loadhour || "",
+                loadminute: route.loadminute || "",
+                remark: route.remark || "",
+                loadStatus: route.loadStatus || "",
+                loadedTimeTaken: route.loadedTimeTaken || "",
+                loadedTimeDifference: route.loadedTimeDifference || "",
+                DieselUsed: route.DieselUsed || 0,
+
+                incentive: payroll.incentive || 0,
+                penalty: payroll.penalty || 0,
+                tripStatus: payroll.tripStatus || "",
+                tripTimeTaken: payroll.tripTimeTaken || "",
+                tripTimeDifference: payroll.tripTimeDifference || "",
+                tripSalary: payroll.tripSalary || 0,
+                TotalSalary: payroll.TotalSalary || 0,
+                TripLateCharge: payroll.TripLateCharge || 0,
+                TripIncentiveAmount: payroll.TripIncentiveAmount || 0
+            };
+        });
+
+        worksheet.addRows(TripFormatData);
+
+        // Write Excel file
+        await workbook.xlsx.writeFile("trip.xlsx");
+        res.download("trip.xlsx", "trip.xlsx");
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Failed to generate Excel file",
+        });
+    }
+
+})
 
 
 
-module.exports = { addTrip, getTrip, deleteTrip, updateData, bulkTrip }
+
+module.exports = { addTrip, getTrip, deleteTrip, updateData, bulkTrip, exportExcel }
