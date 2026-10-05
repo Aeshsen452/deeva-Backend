@@ -27,7 +27,6 @@ const checkingDate = (t1, t2) => {
     return true
 }
 
-
 // Step 1 
 const calculatingTimeTaken = (d1, d2) => {
 
@@ -504,10 +503,7 @@ const bulkTrip = Err(async (req, res) => {
         return res.status(400).json({ message: "Some duplicates rps number found  " })
     }
 
-    fs.unlinkSync(filePath);
-
     res.status(201).json({ message: "Data which are correct that are inserted...." })
-
 
 })
 

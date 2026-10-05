@@ -1,8 +1,5 @@
 const { Err } = require("../../utils/errorHandling")
 const tripmodel = require("../Trip/trip.model");
-const fs = require("fs");
-const path = require("path");
-
 
 
 const GetDriverData = Err(async (req, res) => {
@@ -45,168 +42,161 @@ const GetDriverData = Err(async (req, res) => {
         }
     }
 
-    const tripData = await tripmodel.find(query);
 
-    if (tripData.length == 0) return res.status(200).json({ message: "fetched", data: tripData })
+    let Driverdata = []
 
-
-    let Driverdata = tripData
-
+    let total = 0;
     if (driver) {
-        const filteringData = tripData.reduce((acc, current) => {
 
-            const route = current.route;
-            const vehicle = current.vehicleNumber;
+        Driverdata = await tripmodel.aggregate([
+            {
+                $match: query
+            },
+            {
+                $group: {
+                    _id: {
+                        vehicleNumber: "$vehicleNumber",
+                        route: "$route"
+                    },
+                    TotalSalary: {
+                        $sum: "$payroll.TotalSalary"
+                    },
+                    DieselUsed: {
+                        $sum: {
+                            $convert: {
+                                input: "$DieselUsed",
+                                to: "double",
+                            }
+                        }
+                    },
+                    TotalTrip: {
+                        $sum: 1
+                    },
+                    TripAmount: {
+                        $first: "$payroll.tripSalary"
+                    },
+                    OnTimeIncentive: {
+                        $first: "$payroll.TripIncentiveAmount"
+                    },
+                    OnLateCharge: {
+                        $first: "$payroll.TripLateCharge"
+                    },
+                    Refund: {
+                        $sum: {
+                            $convert: {
+                                input: "$refundedamount",
+                                to: "double"
+                            }
+                        }
+                    },
+                    totalOnTime: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$payroll.tripStatus", "Early"] },
+                                1,
+                                0
+                            ]
+                        }
 
-            // Invalid data skip
-            if (!route || !vehicle) {
-                return acc;
-            }
+                    },
+                    totalLate: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$payroll.tripStatus", "Late"] },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: "$_id.vehicleNumber",
+                    routes: {
+                        $push: {
+                            route: "$_id.route",
+                            TotalSalary: "$TotalSalary",
+                            DieselUsed: "$DieselUsed",
+                            TotalTrip: "$TotalTrip",
+                            TripAmount: "$TripAmount",
+                            OnTimeIncentive: "$OnTimeIncentive",
+                            OnLateCharge: "$OnLateCharge",
+                            Refund: "$Refund",
+                            totalOnTime: "$totalOnTime",
+                            totalLate: "$totalLate"
+                        }
+                    }
+                }
+            },
 
-            // Vehicle initialize
-            if (!acc[vehicle]) {
-                acc[vehicle] = {
-                    data: {}
-                };
-            }
-
-            // Route initialize
-            if (!acc[vehicle].data[route]) {
-                acc[vehicle].data[route] = {
-                    Salary: 0,
-                    Salary_Deducted: 0,
-                    On_Time: 0,
-                    Late: 0,
-                    Early: 0,
-                    rps: 0,
-                    TripAmount: 0,
-                    IncentiveAmount: 0,
-                    LateAmount: 0,
-                    refund: 0,
-                    Diesel: 0,
-
-                };
-            }
-
-
-            if (!acc[vehicle].data[route].TripAmount) {
-                acc[vehicle].data[route].TripAmount = current.payroll?.tripSalary || 0;
-            }
-
-            if (!acc[vehicle].data[route].IncentiveAmount) {
-                acc[vehicle].data[route].IncentiveAmount = current.payroll?.TripIncentiveAmount || 0;
-            }
-
-            if (!acc[vehicle].data[route].LateAmount) {
-                acc[vehicle].data[route].LateAmount = current.payroll?.TripLateCharge || 0;
-            }
+        ]);
 
 
-
-            const routeData = acc[vehicle].data[route];
-
-            // Salary
-            routeData.Salary += Number(
-                current.payroll?.TotalSalary || 0
-            );
-
-            routeData.refund += Number(
-                current.refundedamount || 0
-            );
-
-            routeData.Diesel += Number(
-                current.DieselUsed || 0
-            );
-
-
-
-            // Penalty
-            routeData.Salary_Deducted += Number(
-                current.payroll?.penalty || 0
-            );
-
-
-
-
-            // Status
-            const status = current.payroll?.tripStatus;
-
-            if (status === "Late") {
-                routeData.Late++;
-            }
-            else if (status === "Early") {
-                routeData.Early++;
-            }
-            else {
-                routeData.On_Time++;
-            }
-
-            // RPS
-            routeData.rps++;
-
-            return acc;
-
-        }, {});
-
-        // Driverdata = Object.values(filteringData)
-
-        Driverdata = Object.entries(filteringData).map(([key, value]) => ({
-            key,
-            ...value
-        }));
 
     } else {
-        const newData = tripData.reduce((acc, current) => {
-            const { driverName, vehicleNumber, route } = current;
+        Driverdata = await tripmodel.aggregate([
+            {
+                $match: query
+            },
+            {
+                $group: {
+                    _id: "$driverName",
+                    TotalTrip: {
+                        $sum: 1
+                    },
+                    TotalSalary: {
+                        $sum: "$payroll.TotalSalary"
+                    },
+                    TotalVehicles: {
+                        $addToSet: "$vehicleNumber"
+                    },
+                    TotalRoute: {
+                        $addToSet: "$route"
+                    },
+                    Late: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$payroll.tripStatus", "Late"] },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    OnTime: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$payroll.tripStatus", "Early"] },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $skip: Number(skip)
+            },
+            {
+                $limit: Number(limit)
+            },
 
-            if (!acc[driverName]) {
-                acc[driverName] = {
-                    TotalRps: 0,
-                    TotalSalary: 0,
-                    OnTime: 0,
-                    Late: 0,
-                    Early: 0,
-                    Route: [],
-                    Vehicles: [],
-                    driverName: ""
+        ])
+        const totalDocument = await tripmodel.aggregate([
+            {
+                $match: query
+            },
+            {
+                $group: {
+                    _id: "$driverName",
                 }
             }
+        ])
 
-            if (!acc[driverName][driverName]) {
-                acc[driverName].driverName = driverName;
-            }
-
-            acc[driverName].TotalSalary += Number(
-                current.payroll?.TotalSalary || 0
-            );
-
-            acc[driverName].TotalRps++;
-
-            const status = current.payroll?.tripStatus;
-
-            if (status === "Late") {
-                acc[driverName].Late++;
-            } else if (status === "Early") {
-                acc[driverName].Early++;
-            } else {
-                acc[driverName].OnTime++;
-            }
-
-            if (route && !acc[driverName].Route.includes(route)) {
-                acc[driverName].Route.push(route);
-            }
-
-            if (vehicleNumber && !acc[driverName].Vehicles.includes(vehicleNumber)) {
-                acc[driverName].Vehicles.push(vehicleNumber);
-            }
-
-            return acc;
-
-        }, {})
-        Driverdata = Object.values(newData);
+        total = totalDocument.length
     }
 
-    res.status(200).json({ message: "ok", data: Driverdata })
+    res.status(200).json({ message: "ok", data: Driverdata, total })
 })
 
 
