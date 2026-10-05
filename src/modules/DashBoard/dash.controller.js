@@ -1,5 +1,6 @@
 const { Err } = require("../../utils/errorHandling")
 const tripmodel = require("../Trip/trip.model");
+const drivermodel = require("../driver/driver.model");
 
 
 const GetDriverData = Err(async (req, res) => {
@@ -199,6 +200,11 @@ const GetDriverData = Err(async (req, res) => {
     res.status(200).json({ message: "ok", data: Driverdata, total })
 })
 
+const GetAllDriver = Err(async (req, res) => {
+    const getAllData = await drivermodel.find({}, { driverName: true });
+    res.status(200).json({ message: "ok", data: getAllData })
+})
 
 
-module.exports = { GetDriverData };
+
+module.exports = { GetDriverData, GetAllDriver };
