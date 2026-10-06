@@ -49,6 +49,7 @@ const GetDriverData = Err(async (req, res) => {
     let total = 0;
     if (driver) {
 
+
         Driverdata = await tripmodel.aggregate([
             {
                 $match: query
@@ -139,9 +140,8 @@ const GetDriverData = Err(async (req, res) => {
 
         ]);
 
-
-
     } else {
+
         Driverdata = await tripmodel.aggregate([
             {
                 $match: query
@@ -199,7 +199,6 @@ const GetDriverData = Err(async (req, res) => {
                 }
             }
         ])
-
         total = totalDocument.length
     }
 

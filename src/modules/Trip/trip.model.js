@@ -5,19 +5,22 @@ const tripSchema = new Schema({
     date: {
         type: String,
         required: [true, "Date is required"],
-        trim: true
+        trim: true,
+        index: true
     },
     rps: {
         type: String,
         unique: true,
         trim: true,
         required: [true, "rps number is required"],
-        minlength: [6, "invalid rps number"]
+        minlength: [6, "invalid rps number"],
+        index: true
     },
     driverName: {
         type: String,
         required: [true, "driver name is required"],
         trim: true,
+        index: true
     },
     vehicleNumber: {
         type: String,
