@@ -67,9 +67,12 @@ const GetDriverData = Err(async (req, res) => {
                             $convert: {
                                 input: "$DieselUsed",
                                 to: "double",
+                                onError: 0,
+                                onNull: 0
                             }
                         }
                     },
+
                     TotalTrip: {
                         $sum: 1
                     },
@@ -86,10 +89,13 @@ const GetDriverData = Err(async (req, res) => {
                         $sum: {
                             $convert: {
                                 input: "$refundedamount",
-                                to: "double"
+                                to: "double",
+                                onError: 0,
+                                onNull: 0
                             }
                         }
                     },
+
                     totalOnTime: {
                         $sum: {
                             $cond: [
