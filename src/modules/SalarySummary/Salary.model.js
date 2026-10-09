@@ -29,6 +29,10 @@ const SalarySchema = new Schema({
     calender: {
         type: String,
         required: true
+    },
+    cumaltiveAmount: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true })
 
