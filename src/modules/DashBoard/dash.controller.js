@@ -43,9 +43,7 @@ const GetDriverData = Err(async (req, res) => {
         }
     }
 
-
     let Driverdata = []
-
     let total = 0;
     if (driver) {
 
@@ -115,6 +113,9 @@ const GetDriverData = Err(async (req, res) => {
                                 0
                             ]
                         }
+                    },
+                    TotalLateDeduction: {
+                        $sum: "$payroll.penalty"
                     }
                 }
             },
@@ -132,7 +133,8 @@ const GetDriverData = Err(async (req, res) => {
                             OnLateCharge: "$OnLateCharge",
                             Refund: "$Refund",
                             totalOnTime: "$totalOnTime",
-                            totalLate: "$totalLate"
+                            totalLate: "$totalLate",
+                            TotalLateDeduction: "$TotalLateDeduction"
                         }
                     }
                 }
@@ -209,7 +211,6 @@ const GetAllDriver = Err(async (req, res) => {
     const getAllData = await drivermodel.find({}, { driverName: true });
     res.status(200).json({ message: "ok", data: getAllData })
 })
-
 
 
 module.exports = { GetDriverData, GetAllDriver };
